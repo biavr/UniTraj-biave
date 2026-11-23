@@ -14,7 +14,10 @@ import numpy as np
 import pickle
 from collections import defaultdict
 import os
-from waymo_open_dataset.protos import sim_agents_submission_pb2
+try:
+    from waymo_open_dataset.protos import sim_agents_submission_pb2
+except ImportError:  # optional: only needed for SMART sim-agents export
+    sim_agents_submission_pb2 = None
 import psutil
 import random
 import wandb
@@ -41,7 +44,9 @@ def cal_polygon_contour(x, y, theta, width, length):
     return polygon_contour
 
 
-def joint_scene_from_states(states, object_ids) -> sim_agents_submission_pb2.JointScene:
+def joint_scene_from_states(states, object_ids) -> "sim_agents_submission_pb2.JointScene":
+    if sim_agents_submission_pb2 is None:
+        raise ImportError("waymo_open_dataset is required for joint_scene_from_states")
     states = states.numpy()
     simulated_trajectories = []
     for i_object in range(len(object_ids)):

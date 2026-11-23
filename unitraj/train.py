@@ -27,6 +27,9 @@ def train(cfg):
     train_batch_size = max(cfg.method['train_batch_size'] // len(cfg.devices),  1)
     eval_batch_size = max(cfg.method['eval_batch_size'] // len(cfg.devices), 1)
 
+    exp_dir = os.path.join(cfg.log_dir, cfg.exp_name)
+    ckpt_dir = os.path.join(exp_dir, 'checkpoints')
+
     call_backs = []
 
     checkpoint_callback = ModelCheckpoint(
@@ -34,7 +37,7 @@ def train(cfg):
         filename='{epoch}-{val/brier_fde:.2f}',
         save_top_k=1,
         mode='min',  # 'min' for loss/error, 'max' for accuracy
-        dirpath=f'./unitraj_ckpt/{cfg.exp_name}'
+        dirpath=ckpt_dir
     )
 
     call_backs.append(checkpoint_callback)
@@ -49,7 +52,9 @@ def train(cfg):
 
     trainer = pl.Trainer(
         max_epochs=cfg.method.max_epochs,
-        logger=None if cfg.debug else WandbLogger(project="unitraj", name=cfg.exp_name, id=cfg.exp_name),
+        logger=None if cfg.debug else WandbLogger(project="unitraj", name=cfg.exp_name, id=cfg.exp_name,
+                                                  save_dir=exp_dir),
+        default_root_dir=exp_dir,  # where lightning_logs/ go when no logger is set (debug)
         devices=1 if cfg.debug else cfg.devices,
         gradient_clip_val=cfg.method.grad_clip_norm,
         # accumulate_grad_batches=cfg.method.Trainer.accumulate_grad_batches,
@@ -64,7 +69,7 @@ def train(cfg):
     # automatically resume training
     if cfg.ckpt_path is None and not cfg.debug:
         # Pattern to match all .ckpt files in the base_path recursively
-        search_pattern = os.path.join('./unitraj', cfg.exp_name, '**', '*.ckpt')
+        search_pattern = os.path.join(ckpt_dir, '**', '*.ckpt')
         cfg.ckpt_path = find_latest_checkpoint(search_pattern)
 
     trainer.fit(model=model, train_dataloaders=train_loader, val_dataloaders=val_loader, ckpt_path=cfg.ckpt_path)

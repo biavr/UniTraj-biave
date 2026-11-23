@@ -3,12 +3,13 @@ exp_name: 'test' # name that will be used in wandb
 ckpt_path: null # checkpoint path, used for evaluation
 seed: 42 # random seed
 debug: True # debug mode, will use cpu only
-devices: [ 0 ] # gpu ids
+devices: [ 5 ] # gpu ids
+log_dir: '/workspace/logs/unitraj' # root for all outputs; each run goes to ${log_dir}/${exp_name}/
 
 # data related
 load_num_workers: 0 # number of workers for loading data
-train_data_path: [ "data_samples/nuscenes" ] # list of paths to the training data
-val_data_path: [ "data_samples/nuscenes" ] # list of paths to the validation data
+train_data_path: [ "/workspace/UniTraj/unitraj/data_samples/nuscenes" ] # list of paths to the training data
+val_data_path: [ "/workspace/UniTraj/unitraj/data_samples/nuscenes" ] # list of paths to the validation data
 cache_path: "./cache"
 max_data_num: [ null ] # maximum number of data for each training dataset, null means all data
 starting_frame: [ 0 ] # history trajectory starts at this frame for each training dataset
@@ -32,3 +33,7 @@ eval_argoverse2: False # whether to evaluate with argoverse evaluation tool
 
 defaults:
   - method: autobot
+
+hydra:
+  run:
+    dir: ${log_dir}/${exp_name}/hydra/${now:%Y-%m-%d_%H-%M-%S} # saved config + run log

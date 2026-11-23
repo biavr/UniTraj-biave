@@ -9,6 +9,7 @@ import seaborn as sns
 import numpy as np
 import pandas as pd
 import wandb
+import os
 import hydra
 from omegaconf import OmegaConf
 
@@ -24,7 +25,7 @@ def data_analysis(cfg):
         train_set, batch_size=train_batch_size, num_workers=cfg.load_num_workers, drop_last=False,
         collate_fn=train_set.collate_fn)
 
-    wandb.init(project="unitraj", name=cfg.exp_name)
+    wandb.init(project="unitraj", name=cfg.exp_name, dir=os.path.join(cfg.log_dir, cfg.exp_name))
     type_results = {}
     kalman_results = {}
     vehicle_sum = 0
