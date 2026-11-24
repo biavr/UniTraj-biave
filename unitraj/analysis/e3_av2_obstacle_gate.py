@@ -208,10 +208,20 @@ def main():
     sizes = {k: tuple(med[v][:2]) for k, v in SIZE_MAP.items()}
     SIZES.update(sizes)
 
-    dirs = sorted(d for d in glob.glob(os.path.join(args.av2_root, "*")) if os.path.isdir(d))
-    ok = [d for d in dirs if complete(d)]
-    random.Random(args.seed).shuffle(ok)
-    sel = sorted(ok[:args.num_scenarios])
+    # Shuffle all folder names (seed), then check completeness only until enough
+    # are found: avoids ~200k NFS listings. Identical selection to filtering
+    # everything first whenever all folders are complete.
+    dirs = sorted(os.path.join(args.av2_root, n) for n in os.listdir(args.av2_root))
+    order = dirs[:]
+    random.Random(args.seed).shuffle(order)
+    ok, n_checked = [], 0
+    for d in order:
+        n_checked += 1
+        if os.path.isdir(d) and complete(d):
+            ok.append(d)
+            if len(ok) == args.num_scenarios:
+                break
+    sel = sorted(ok)
     with open(os.path.join(args.out, "e3_scenario_ids.txt"), "w") as f:
         f.write("\n".join(os.path.basename(d) for d in sel) + "\n")
 
@@ -253,7 +263,8 @@ def main():
     decision = "GO" if primary["share"] >= GO_SHARE else "NO-GO"
     import av2
     meta = dict(date=datetime.date.today().isoformat(), av2_root=args.av2_root,
-                n_complete_dirs=len(ok), n_dirs_seen=len(dirs), n_selected=len(sel), seed=args.seed,
+                n_dirs_total=len(dirs), n_dirs_checked=n_checked,
+                n_incomplete_skipped=n_checked - len(ok), n_selected=len(sel), seed=args.seed,
                 n_read_errors=len(errors), read_errors=errors[:50],
                 av2_devkit=getattr(av2, "__version__", "0.3.6"),
                 unitraj_commit=git_commit(os.path.dirname(os.path.abspath(__file__))),
@@ -266,7 +277,7 @@ def main():
 
     L = [f"# E3 GT-obstacle gate, Argoverse 2 ({meta['date']})", "",
          f"- data: AV2 motion-forecasting train, {len(sel)} scenarios sampled (seed {args.seed}) "
-         f"from {len(ok)} complete folders; read errors: {len(errors)}",
+         f"of {len(dirs)} folders ({n_checked - len(ok)} incomplete skipped); read errors: {len(errors)}",
          f"- av2 devkit {meta['av2_devkit']}, UniTraj {meta['unitraj_commit']}",
          f"- targets: {meta['n_focal']} focal vehicle/bus (moving: {meta['n_focal_moving']})",
          f"- box sizes [w, l] from nuScenes medians: {sizes}",
